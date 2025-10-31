@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sender Bridge</title>
+</head>
+<body>
+    <!-- 
+        This page is a transactional bridge. 
+        It receives a list of cookies to set via the 'cookies' URL parameter 
+        and sets them before closing.
+    -->
+    <script>
+        // Helper function to set a cookie.
+        function setCookie(name, value, days = 1) {
+            const encodedValue = encodeURIComponent(value);
+            const date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            const expires = "expires=" + date.toUTCString();
+            document.cookie = `${name}=${encodedValue}; ${expires}; SameSite=None; Secure; Path=/`;
+            console.log(`Cookie set/updated: ${name}`);
+        }
+
+        // --- Main Logic ---
+        (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const cookiesEncoded = urlParams.get('cookies'); // Expects encoded JSON: [{"name":"...", "value":"..."}, ...]
+
+            if (cookiesEncoded) {
+                try {
+                    // 1. Decode and parse the JSON array from the URL parameter
+                    const cookiesToSet = JSON.parse(decodeURIComponent(cookiesEncoded));
+                    console.log(cookiesToSet);
+
+                    // 2. Iterate through the array and set each cookie
+                    if (Array.isArray(cookiesToSet)) {
+                        cookiesToSet.forEach(cookie => {
+                            if (cookie && typeof cookie.name === 'string' && typeof cookie.value === 'string') {
+                                // The value is already encoded by the sender bookmarklet
+                                setCookie(cookie.name, cookie.value);
+                            } else {
+                                console.warn('Skipping invalid cookie object:', cookie);
+                            }
+                        });
+                    } else {
+                        console.error('Bridge Error: "cookies" parameter is not a valid JSON array.');
+                    }
+
+                } catch (e) {
+                    console.error("Bridge Sender Error processing cookies parameter:", e);
+                    // Log error but still try to close
+                }
+            } else {
+                console.log("No 'cookies' parameter found in URL.");
+            }
+
+            // Always close the window after a tiny delay
+            setTimeout(() => {
+                window.close();
+            }, 50);
+
+        })();
+    </script>
+</body>
+</html>
