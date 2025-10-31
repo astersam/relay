@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Receiver Bridge</title>
+</head>
+<body>
+    <!-- This page runs in a hidden iframe and acts as a secure data fetcher. -->
+    <script>
+        // Helper function to read a specific cookie
+        function getCookie(name) {
+            const nameEQ = name + "=";
+            const ca = document.cookie.split(';');
+            for(let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) === 0) {
+                    return decodeURIComponent(c.substring(nameEQ.length, c.length));
+                }
+            }
+            return null;
+        }
+
+        // Listen for requests from the parent window (the receiver bookmarklet)
+        window.addEventListener('message', (event) => {
+            // Do not process messages from other windows
+            if (event.source !== window.parent) {
+                return;
+            }
+
+            const command = event.data;
+            if (command && typeof command === 'string' && command.startsWith('getCookie:')) {
+                const cookieName = command.split(':')[1];
+                const cookieValue = getCookie(cookieName);
+                
+                // Send the result (even if null) back to the parent.
+                // We include the cookieName in the response so the parent knows what this is.
+                const response = {
+                    cookieName: cookieName,
+                    cookieValue: cookieValue
+                };
+                
+                // Send the data to the parent window, specifying its origin
+                window.parent.postMessage(JSON.stringify(response), event.origin);
+            }
+        });
+
+        // Announce that the bridge is ready
+        if (window.parent && window.parent !== window) {
+            window.parent.postMessage('__BRIDGE_READY__', '*');
+        }
+    </script>
+</body>
+</html>
